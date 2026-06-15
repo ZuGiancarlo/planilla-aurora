@@ -591,15 +591,17 @@ function renderResumenHE(anio,heMap){
     const key=`${anio}-${m}`;
     const sh=getSHparaMes(anio,m);
     const afpT=p(sh.aporte)+p(sh.flujo)+p(sh.seguro);
-    const d=heMap[key]||{q1:0,q2:0};
+    const d=heMap[key]||{q1:0,q2:0,q1leg:0,q2leg:0};
     const bruto=r2(d.q1+d.q2);
     const reg=analisisRegularidad(registro,anio,m0forSem(m),m1forSem(m),(y,mm)=>getSHparaMes(y,mm).monto);
     const tr=document.createElement('tr');
     if(!bruto){
       tr.innerHTML=`<td>${MESES_ES[m]}</td><td style="color:#999">S/ ${fmt(sh.monto)}</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td>`;
     } else {
-      const afpHE=r2(bruto*afpT);
-      const nq1=r2(d.q1-r2(d.q1*afpT)),nq2=r2(d.q2-r2(d.q2*afpT)),neto=r2(nq1+nq2);
+      // AFP solo sobre la porcion remunerativa (q1leg/q2leg), nunca sobre liberalidad
+      const q1leg=d.q1leg||0, q2leg=d.q2leg||0;
+      const afpHE=r2((q1leg+q2leg)*afpT);
+      const nq1=r2(d.q1-r2(q1leg*afpT)),nq2=r2(d.q2-r2(q2leg*afpT)),neto=r2(nq1+nq2);
       tQ1+=d.q1;tQ2+=d.q2;tB+=bruto;tA+=afpHE;tN1+=nq1;tN2+=nq2;tN+=neto;
       const regLabel=reg.esRegular?'<span style="color:#1a6b3a;font-weight:700">Si (computa)</span>':'<span style="color:#888">No</span>';
       tr.innerHTML=`<td>${MESES_ES[m]}</td><td>S/ ${fmt(sh.monto)}</td><td>S/ ${fmt(d.q1)}</td><td>S/ ${fmt(d.q2)}</td><td style="font-weight:700">S/ ${fmt(bruto)}</td><td style="color:#c0392b">S/ ${fmt(afpHE)}</td><td style="color:#1a6b3a">S/ ${fmt(nq1)}</td><td style="color:#1a6b3a">S/ ${fmt(nq2)}</td><td style="font-weight:800;color:#1a1a2e">S/ ${fmt(neto)}</td><td>${regLabel}</td>`;
