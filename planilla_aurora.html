@@ -548,7 +548,11 @@ function renderRegistro(){
 
 function getHEporMes(anio){
   const map={};
-  getMeses(anio).forEach(m=>{map[`${anio}-${m}`]={q1:0,q2:0,q1leg:0,q2leg:0,q1adic:0,q2adic:0};});
+  getMeses(anio).forEach(m=>{map[`${anio}-${m}`]={
+    q1:0,q2:0,q1leg:0,q2leg:0,q1adic:0,q2adic:0,
+    // Desglose por tipo de concepto (solo monto remunerativo "remun")
+    q1HE:0,q2HE:0, q1FER:0,q2FER:0, q1ASIS:0,q2ASIS:0, q1BONO:0,q2BONO:0
+  };});
   registro.forEach(r=>{
     const key=getMesKeyFromFecha(r.fecha);if(!key||!map[key])return;
     const sal=getSHparaMes(parseInt(r.fecha.split('-')[0]),parseInt(r.fecha.split('-')[1])-1).monto;
@@ -558,6 +562,10 @@ function getHEporMes(anio){
     // q1adic/q2adic = liber (liberalidad, no afecta AFP/EsSalud, se paga aparte conceptualmente pero suma al neto).
     if(q==='Q1'){ map[key].q1=r2(map[key].q1+total); map[key].q1leg=r2(map[key].q1leg+remun); map[key].q1adic=r2(map[key].q1adic+liber); }
     else        { map[key].q2=r2(map[key].q2+total); map[key].q2leg=r2(map[key].q2leg+remun); map[key].q2adic=r2(map[key].q2adic+liber); }
+    // Desglose por tipo (solo remun, ya que liber se reporta aparte como "adic")
+    const tipoKey=r.tipo==='HE'?'HE':r.tipo==='FERIADO'?'FER':r.tipo==='ASISTENCIA'?'ASIS':'BONO';
+    const campo=(q==='Q1'?'q1':'q2')+tipoKey;
+    map[key][campo]=r2(map[key][campo]+remun);
   });
   return map;
 }
@@ -691,6 +699,10 @@ function recalcular(){
       neto1,neto2,heBruto,heQ1,heQ2,
       heQ1leg:(heMap[mesKey]?heMap[mesKey].q1leg:0), heQ2leg:(heMap[mesKey]?heMap[mesKey].q2leg:0),
       heQ1adic:(heMap[mesKey]?heMap[mesKey].q1adic:0), heQ2adic:(heMap[mesKey]?heMap[mesKey].q2adic:0),
+      q1HE:(heMap[mesKey]?heMap[mesKey].q1HE:0), q2HE:(heMap[mesKey]?heMap[mesKey].q2HE:0),
+      q1FER:(heMap[mesKey]?heMap[mesKey].q1FER:0), q2FER:(heMap[mesKey]?heMap[mesKey].q2FER:0),
+      q1ASIS:(heMap[mesKey]?heMap[mesKey].q1ASIS:0), q2ASIS:(heMap[mesKey]?heMap[mesKey].q2ASIS:0),
+      q1BONO:(heMap[mesKey]?heMap[mesKey].q1BONO:0), q2BONO:(heMap[mesKey]?heMap[mesKey].q2BONO:0),
       gratFP:gFP,gratNav:gNav,cts:ctsV,
       subtotal,desembolso
     };
@@ -864,10 +876,16 @@ function generarBoleta(mesKey){
   const b15=r2f(d.sh.monto/2);
   rowM('A. Remuneracion 1a quincena (dias 1-15)',b15);
   rowM('B. Remuneracion 2a quincena (dias 16-fin)',b15);
-  if(d.heQ1leg>0) rowM('C. Horas extras / feriados Q1 (calculo legal)',d.heQ1leg,false,'#fff8f0','#8b4513');
-  if(d.heQ2leg>0) rowM('C. Horas extras / feriados Q2 (calculo legal)',d.heQ2leg,false,'#fff8f0','#8b4513');
-  if(d.heQ1adic>0) rowM('C2. Bono / adicional voluntario Q1',d.heQ1adic,false,'#f0f4ff','#1a4b8a');
-  if(d.heQ2adic>0) rowM('C2. Bono / adicional voluntario Q2',d.heQ2adic,false,'#f0f4ff','#1a4b8a');
+  if(d.q1HE>0)   rowM('C. Horas extras Q1 (calculo legal)',d.q1HE,false,'#fff8f0','#8b4513');
+  if(d.q2HE>0)   rowM('C. Horas extras Q2 (calculo legal)',d.q2HE,false,'#fff8f0','#8b4513');
+  if(d.q1FER>0)  rowM('C. Feriados trabajados Q1 (calculo legal)',d.q1FER,false,'#f3e8ff','#6a1b9a');
+  if(d.q2FER>0)  rowM('C. Feriados trabajados Q2 (calculo legal)',d.q2FER,false,'#f3e8ff','#6a1b9a');
+  if(d.q1ASIS>0) rowM('C. Bono asistencia perfecta Q1',d.q1ASIS,false,'#e0f7f2','#00695c');
+  if(d.q2ASIS>0) rowM('C. Bono asistencia perfecta Q2',d.q2ASIS,false,'#e0f7f2','#00695c');
+  if(d.q1BONO>0) rowM('C. Bono puntual (remunerativo) Q1',d.q1BONO,false,'#efebe9','#5d4037');
+  if(d.q2BONO>0) rowM('C. Bono puntual (remunerativo) Q2',d.q2BONO,false,'#efebe9','#5d4037');
+  if(d.heQ1adic>0) rowM('C2. Bono puntual (liberalidad, sin AFP/EsSalud) Q1',d.heQ1adic,false,'#f0f4ff','#1a4b8a');
+  if(d.heQ2adic>0) rowM('C2. Bono puntual (liberalidad, sin AFP/EsSalud) Q2',d.heQ2adic,false,'#f0f4ff','#1a4b8a');
   if(d.gratFP)  rowM(`D. Grat. FP: S/${fN(d.gratFP.base)}x${d.gratFP.meses}/6 + S/${fN(d.gratFP.bon)} bon.ext.`,d.gratFP.total,false,'#f0fff4','#1a6b3a');
   if(d.gratNav) rowM(`D. Grat. Nav.: S/${fN(d.gratNav.base)}x${d.gratNav.meses}/6 + S/${fN(d.gratNav.bon)} bon.ext.`,d.gratNav.total,false,'#f0fff4','#1a6b3a');
   const totalIng=r2f(d.sh.monto+d.heBruto+(d.gratFP?d.gratFP.total:0)+(d.gratNav?d.gratNav.total:0));
