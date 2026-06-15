@@ -1,0 +1,980 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planilla Aurora · Miraflores</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'Segoe UI', system-ui, sans-serif; background: #fff; color: #1a1a1a; min-height: 100vh; }
+
+header { background: #1a1a2e; color: #fff; padding: 18px 32px; display: flex; align-items: center; justify-content: space-between; border-bottom: 3px solid #e63946; }
+header h1 { font-size: 1.2rem; font-weight: 700; }
+header p  { font-size: 0.72rem; color: #aab; margin-top: 3px; }
+.worker-badge { display: flex; align-items: center; gap: 10px; background: rgba(255,255,255,0.08); border-radius: 10px; padding: 8px 14px; }
+.avatar { width: 36px; height: 36px; border-radius: 50%; background: #e63946; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 0.9rem; color: #fff; flex-shrink: 0; }
+.worker-info p { font-size: 0.72rem; color: #ccd; }
+.worker-info strong { font-size: 0.88rem; }
+
+.tabs { display: flex; border-bottom: 2px solid #e2e2ec; margin-bottom: 24px; }
+.tab-btn { padding: 9px 22px; font-size: 0.8rem; font-weight: 600; cursor: pointer; border: none; background: none; color: #888; border-bottom: 3px solid transparent; margin-bottom: -2px; transition: all 0.15s; }
+.tab-btn.active { color: #1a1a2e; border-bottom-color: #e63946; }
+.tab-panel { display: none; }
+.tab-panel.active { display: block; }
+
+.container { max-width: 1260px; margin: 0 auto; padding: 26px 18px; }
+
+/* Historial de sueldos */
+.sh-box { background: #fff; border: 1.5px solid #e63946; border-radius: 12px; padding: 18px 22px; margin-bottom: 22px; }
+.sh-box h3 { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: #e63946; margin-bottom: 14px; }
+.sh-list { display: flex; flex-direction: column; gap: 10px; margin-bottom: 12px; }
+.sh-row { background: #fafafa; border: 1px solid #ececec; border-radius: 8px; padding: 10px 14px; display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end; }
+.sh-field { display: flex; flex-direction: column; gap: 3px; }
+.sh-field label { font-size: 0.62rem; color: #888; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap; }
+.sh-field input, .sh-field select { padding: 5px 8px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.82rem; background: #fff; }
+.sh-field input { width: 90px; }
+.sh-field input.wide { width: 130px; }
+.sh-field select { width: 130px; }
+.sh-field input:focus, .sh-field select:focus { outline: none; border-color: #e63946; }
+.sh-divider { width: 1px; background: #e0e0e0; height: 38px; align-self: flex-end; margin-bottom: 2px; }
+.sh-range { font-size: 0.68rem; color: #aaa; align-self: flex-end; padding-bottom: 7px; }
+.del-sh-btn { background: none; border: none; cursor: pointer; color: #ddd; font-size: 0.9rem; padding: 4px 6px; border-radius: 4px; align-self: flex-end; margin-bottom: 4px; transition: color 0.15s; }
+.del-sh-btn:hover { color: #e63946; }
+.add-sh-btn { display: inline-flex; align-items: center; gap: 5px; background: #f8f8fb; color: #1a1a2e; border: 1.5px solid #ddd; border-radius: 7px; padding: 6px 12px; font-size: 0.73rem; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+.add-sh-btn:hover { border-color: #e63946; color: #e63946; }
+.afp-sub { font-size: 0.62rem; color: #bbb; margin-top: 2px; font-style: italic; }
+
+/* Pills */
+.summary-row { display: flex; flex-wrap: wrap; gap: 11px; margin-bottom: 18px; }
+.pill { background: #f8f8fb; border: 1px solid #e2e2ec; border-radius: 10px; padding: 13px 16px; min-width: 145px; flex: 1; }
+.pill.highlight { background: #1a1a2e; border-color: #1a1a2e; color: #fff; }
+.pill.accent    { background: #e63946; border-color: #e63946; color: #fff; }
+.pill-label   { font-size: 0.63rem; text-transform: uppercase; letter-spacing: 0.8px; opacity: 0.65; margin-bottom: 3px; }
+.pill-value   { font-size: 1.18rem; font-weight: 800; line-height: 1.2; }
+.pill-formula { font-size: 0.65rem; color: #bbb; margin-top: 4px; }
+.pill.highlight .pill-formula, .pill.accent .pill-formula { color: rgba(255,255,255,0.4); }
+
+/* Year filter */
+.year-filter-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.year-filter-row label { font-size: 0.68rem; text-transform: uppercase; letter-spacing: 1px; color: #888; font-weight: 700; }
+.year-filter-row select { padding: 6px 12px; border: 1.5px solid #ddd; border-radius: 7px; font-size: 0.85rem; background: #fff; font-weight: 600; cursor: pointer; }
+.year-filter-row select:focus { outline: none; border-color: #e63946; }
+.tabla-titulo { font-size: 1rem; font-weight: 700; color: #1a1a2e; }
+
+/* Planilla table */
+table.planilla-tbl { width: 100%; border-collapse: collapse; font-size: 0.8rem; border-radius: 10px; overflow: hidden; border: 1px solid #e2e2ec; margin-bottom: 20px; }
+table.planilla-tbl thead tr { background: #1a1a2e; color: #fff; }
+table.planilla-tbl thead th { padding: 9px 9px; text-align: left; font-size: 0.66rem; font-weight: 600; white-space: nowrap; }
+table.planilla-tbl thead th.num { text-align: right; }
+table.planilla-tbl thead th.center { text-align: center; }
+table.planilla-tbl thead th.sc { background: #16213e; text-align: right; }
+table.planilla-tbl thead th.tc { background: #0a0a18; text-align: right; }
+table.planilla-tbl tbody tr { border-bottom: 1px solid #f0f0f5; }
+table.planilla-tbl tbody tr:hover { background: #fafafa; }
+table.planilla-tbl tbody td { padding: 11px 9px; vertical-align: middle; }
+table.planilla-tbl td.num { text-align: right; }
+table.planilla-tbl td.center { text-align: center; }
+td.sc { background: #f4f4fa; font-weight: 700; color: #1a1a2e; text-align: right; font-size: 0.88rem; }
+td.tc { background: #1a1a2e; color: #fff; text-align: right; font-size: 0.9rem; font-weight: 800; }
+table.planilla-tbl tfoot td { background: #f0f0f8; font-weight: 700; border-top: 2px solid #1a1a2e; padding: 10px 9px; font-size: 0.83rem; text-align: right; }
+table.planilla-tbl tfoot td:first-child { text-align: left; }
+table.planilla-tbl tfoot td.sc { background: #ddddf0; }
+table.planilla-tbl tfoot td.tc { background: #1a1a2e; color: #ffd0d0; }
+
+.month-label { font-weight: 700; font-size: 0.86rem; }
+.salary-badge { font-size: 0.6rem; color: #aaa; margin-top: 1px; }
+.amount-main { font-weight: 700; font-size: 0.9rem; display: block; }
+.amount-tag  { font-size: 0.62rem; margin-top: 2px; display: block; }
+.tag { display: inline-block; font-size: 0.56rem; padding: 1px 5px; border-radius: 20px; font-weight: 700; }
+.tag-grat { background: #e8f5e9; color: #1a6b3a; }
+.tag-cts  { background: #e3eeff; color: #1a4b8a; }
+.tag-he   { background: #fff3e0; color: #8b4513; }
+.tag-nav  { background: #fce4ec; color: #880e4f; }
+.neutral  { color: #555; font-weight: 600; font-size: 0.83rem; }
+
+.status-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.checks-row  { display: flex; gap: 7px; align-items: center; }
+.check-group { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.check-lbl   { font-size: 0.58rem; color: #bbb; font-weight: 600; }
+.check-btn { width: 22px; height: 22px; border-radius: 5px; border: 2px solid #ddd; background: #fff; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.15s; }
+.check-btn.checked { background: #2e7d32; border-color: #2e7d32; }
+.check-btn svg { display: none; }
+.check-btn.checked svg { display: block; }
+.pdf-btn { display: inline-flex; align-items: center; gap: 4px; background: #e63946; color: #fff; border: none; border-radius: 5px; padding: 4px 9px; font-size: 0.65rem; font-weight: 600; cursor: pointer; transition: background 0.15s; white-space: nowrap; }
+.pdf-btn:hover { background: #c0392b; }
+
+/* Referencias */
+.ref-box { background: #f8f8fb; border: 1px solid #e2e2ec; border-radius: 10px; padding: 18px 22px; margin-top: 4px; }
+.ref-box h3 { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 14px; }
+.ref-item { margin-bottom: 12px; font-size: 0.76rem; line-height: 1.75; color: #444; }
+.ref-item strong { color: #1a1a2e; }
+.ref-item .f { font-family: 'Courier New', monospace; background: #f0f0f5; padding: 2px 6px; border-radius: 4px; font-size: 0.73rem; color: #333; display: inline-block; margin: 1px 0; }
+.ref-item .nota-ley { font-size: 0.68rem; color: #999; font-style: italic; }
+.ref-computable { background: #fffde7; border: 1px solid #ffe082; border-radius: 6px; padding: 8px 12px; margin-top: 6px; font-size: 0.72rem; color: #555; line-height: 1.7; }
+.ref-computable strong { color: #333; }
+
+.note { font-size: 0.68rem; color: #aaa; margin-top: 16px; border-top: 1px solid #eee; padding-top: 11px; line-height: 1.9; }
+.note strong { color: #666; }
+
+/* HE tab */
+.he-rates-box { background: #fff8f0; border: 1px solid #ffe0b2; border-radius: 10px; padding: 14px 18px; margin-bottom: 18px; }
+.he-rates-box h3 { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: #8b4513; margin-bottom: 10px; }
+.he-rates { display: flex; gap: 9px; flex-wrap: wrap; }
+.he-rate-pill { background: #fff3e0; border: 1px solid #ffcc80; border-radius: 8px; padding: 9px 13px; min-width: 122px; }
+.he-rate-pill .lbl { font-size: 0.6rem; text-transform: uppercase; color: #8b4513; font-weight: 700; margin-bottom: 2px; }
+.he-rate-pill .val { font-size: 1rem; font-weight: 800; color: #5d3000; }
+.he-rate-pill .sub { font-size: 0.62rem; color: #a0522d; margin-top: 1px; }
+
+.reg-box { background: #f8f8fb; border: 1px solid #e2e2ec; border-radius: 10px; padding: 16px 20px; margin-bottom: 20px; }
+.reg-box-hdr { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px; }
+.reg-box-hdr h3 { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: #888; margin: 0; }
+.reg-filter { display: flex; align-items: center; gap: 8px; }
+.filter-lbl { font-size: 0.7rem; color: #888; font-weight: 600; }
+.filter-sel { padding: 5px 9px; border: 1.5px solid #ddd; border-radius: 6px; font-size: 0.8rem; background: #fff; cursor: pointer; }
+.reg-actions { display: flex; gap: 7px; margin-bottom: 12px; flex-wrap: wrap; }
+.add-btn { display: inline-flex; align-items: center; gap: 5px; background: #1a1a2e; color: #fff; border: none; border-radius: 7px; padding: 6px 13px; font-size: 0.73rem; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+.add-btn:hover { background: #e63946; }
+.add-btn.fer { background: #6a1b9a; }
+.add-btn.fer:hover { background: #4a0072; }
+.add-btn.asis { background: #00695c; }
+.add-btn.asis:hover { background: #004d40; }
+.add-btn.bono { background: #5d4037; }
+.add-btn.bono:hover { background: #3e2723; }
+
+table.reg-tbl { width: 100%; border-collapse: collapse; font-size: 0.77rem; border: 1px solid #e2e2ec; border-radius: 8px; overflow: hidden; }
+table.reg-tbl thead tr { background: #2d1a00; color: #fff; }
+table.reg-tbl thead th { padding: 8px 9px; font-size: 0.64rem; font-weight: 600; text-align: right; white-space: nowrap; }
+table.reg-tbl thead th.left { text-align: left; }
+table.reg-tbl tbody tr { border-bottom: 1px solid #f0f0f5; }
+table.reg-tbl tbody tr:hover { background: #fdf8f3; }
+table.reg-tbl tbody td { padding: 7px 9px; vertical-align: middle; text-align: right; }
+table.reg-tbl tbody td.left { text-align: left; }
+table.reg-tbl tfoot td { background: #fff3e0; font-weight: 700; border-top: 2px solid #8b4513; padding: 8px 9px; text-align: right; font-size: 0.8rem; }
+table.reg-tbl tfoot td.left { text-align: left; }
+.empty-reg { text-align: center !important; padding: 20px !important; color: #bbb; font-size: 0.78rem; font-style: italic; }
+.ri { padding: 4px 5px; border: 1.5px solid #ddd; border-radius: 5px; font-size: 0.78rem; text-align: center; background: #fff; }
+.ri:focus { outline: none; border-color: #e63946; }
+.ri.dt { width: 122px; text-align: left; }
+.ri.hrs { width: 46px; }
+.ri.add { width: 64px; }
+.del-btn { background: none; border: none; cursor: pointer; color: #ccc; font-size: 0.85rem; padding: 2px 4px; border-radius: 4px; transition: color 0.15s; }
+.del-btn:hover { color: #e63946; }
+.qb { display: inline-block; font-size: 0.58rem; padding: 2px 5px; border-radius: 10px; font-weight: 700; }
+.qb.q1 { background: #e3f2fd; color: #1565c0; }
+.qb.q2 { background: #e8f5e9; color: #2e7d32; }
+.t-he  { font-size: 0.68rem; color: #8b4513; font-weight: 600; background: #fff3e0; padding: 1px 6px; border-radius: 10px; }
+.t-fer { font-size: 0.68rem; color: #6a1b9a; font-weight: 600; background: #f3e5f5; padding: 1px 6px; border-radius: 10px; }
+.t-asis { font-size: 0.68rem; color: #00695c; font-weight: 600; background: #e0f2f1; padding: 1px 6px; border-radius: 10px; }
+.t-bono { font-size: 0.68rem; color: #5d4037; font-weight: 600; background: #efebe9; padding: 1px 6px; border-radius: 10px; }
+.lib-toggle { cursor: pointer; }
+
+.res-box { background: #f8f8fb; border: 1px solid #e2e2ec; border-radius: 10px; padding: 16px 20px; }
+.res-box h3 { font-size: 0.67rem; text-transform: uppercase; letter-spacing: 1px; color: #888; margin-bottom: 12px; }
+table.res-tbl { width: 100%; border-collapse: collapse; font-size: 0.78rem; border: 1px solid #e2e2ec; border-radius: 8px; overflow: hidden; }
+table.res-tbl thead tr { background: #3e2000; color: #fff; }
+table.res-tbl thead th { padding: 8px 9px; font-size: 0.64rem; font-weight: 600; text-align: right; white-space: nowrap; }
+table.res-tbl thead th:first-child { text-align: left; }
+table.res-tbl tbody tr { border-bottom: 1px solid #f0f0f5; }
+table.res-tbl tbody td { padding: 8px 9px; text-align: right; }
+table.res-tbl tbody td:first-child { text-align: left; font-weight: 600; }
+table.res-tbl tfoot td { background: #fff3e0; font-weight: 700; border-top: 2px solid #8b4513; padding: 8px 9px; text-align: right; }
+table.res-tbl tfoot td:first-child { text-align: left; }
+
+.legal-note { font-size: 0.66rem; color: #999; margin-top: 14px; border-top: 1px solid #eee; padding-top: 9px; line-height: 1.85; }
+.legal-note strong { color: #666; }
+</style>
+</head>
+<body>
+<header>
+  <div><h1>Planilla · Trabajadora del Hogar</h1><p>Calle Piura 454, Miraflores — Giancarlo Zuniga Saavedra · DNI 45930052</p></div>
+  <div class="worker-badge">
+    <div class="avatar">AJ</div>
+    <div class="worker-info"><strong>Aurora M. Jara Aguirre</strong><p>DNI 72094211 · Ingreso: 01/06/2026</p></div>
+  </div>
+  <div id="save-indicator" style="font-size:0.65rem;color:#9aa;margin-left:10px;white-space:nowrap;"></div>
+</header>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab-btn active" onclick="switchTab('planilla',this)">Planilla mensual</button>
+    <button class="tab-btn" onclick="switchTab('he',this)">Horas extras y feriados</button>
+  </div>
+
+  <!-- ══ PLANILLA ══ -->
+  <div id="tab-planilla" class="tab-panel active">
+
+    <div class="sh-box">
+      <h3>Historial de sueldos y tasas</h3>
+      <div class="sh-list" id="sh-list"></div>
+      <button class="add-sh-btn" onclick="addSH()">+ Agregar tramo</button>
+    </div>
+
+    <div class="summary-row" id="pills"></div>
+
+    <div class="year-filter-row">
+      <label>Mostrando año</label>
+      <select id="anio" onchange="recalcular()">
+        <option value="2026" selected>2026</option>
+        <option value="2027">2027</option>
+        <option value="2028">2028</option>
+      </select>
+      <span class="tabla-titulo" id="tabla-titulo">Pagos 2026</span>
+    </div>
+
+    <table class="planilla-tbl">
+      <thead><tr>
+        <th>Mes</th>
+        <th class="num">1a Quincena<br><span style="font-weight:400;opacity:.5;font-size:0.58rem">neto · dia 15</span></th>
+        <th class="num">2a Quincena<br><span style="font-weight:400;opacity:.5;font-size:0.58rem">neto · fin mes</span></th>
+        <th class="num">AFP<br><span style="font-weight:400;opacity:.5;font-size:0.58rem">retencion</span></th>
+        <th class="sc">Subtotal Aurora<br><span style="font-weight:400;opacity:.6;font-size:0.58rem">Q1+Q2</span></th>
+        <th class="num">EsSalud<br><span style="font-weight:400;opacity:.5;font-size:0.58rem">cargo tuyo</span></th>
+        <th class="tc">Total desembolso<br><span style="font-weight:400;opacity:.6;font-size:0.58rem">bruto+HE+benef.+EsSalud</span></th>
+        <th class="center">Estado/Boleta</th>
+      </tr></thead>
+      <tbody id="tabla-body"></tbody>
+      <tfoot id="tabla-foot"></tfoot>
+    </table>
+
+    <div class="ref-box" id="ref-box"></div>
+    <p class="note" id="nota-pie"></p>
+  </div>
+
+  <!-- ══ HE ══ -->
+  <div id="tab-he" class="tab-panel">
+    <div class="he-rates-box">
+      <h3>Tarifas vigentes — sueldo actual: <span id="he-sal-lbl">S/ 1,400.00</span></h3>
+      <div class="he-rates" id="he-rates"></div>
+    </div>
+    <div class="reg-box">
+      <div class="reg-box-hdr">
+        <h3>Registro de horas extras y feriados</h3>
+        <div class="reg-filter">
+          <span class="filter-lbl">Periodo:</span>
+          <select class="filter-sel" id="reg-filter" onchange="renderRegistro()"></select>
+        </div>
+      </div>
+      <div class="reg-actions">
+        <button class="add-btn" onclick="addReg('HE')">+ Horas extras</button>
+        <button class="add-btn fer" onclick="addReg('FERIADO')">+ Feriado trabajado</button>
+        <button class="add-btn asis" onclick="addReg('ASISTENCIA')">+ Bono asistencia perfecta</button>
+        <button class="add-btn bono" onclick="addReg('BONO')">+ Bono / adicional puntual</button>
+      </div>
+      <table class="reg-tbl">
+        <thead><tr>
+          <th class="left">Fecha</th><th class="left">Tipo</th>
+          <th>H1-H2<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">max 2h·+25%</span></th>
+          <th>H3+<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">+35%</span></th>
+          <th>H.noc.<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">10pm-6am</span></th>
+          <th>Dias fer.<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">+200%</span></th>
+          <th>Monto bono<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">asist./puntual</span></th>
+          <th>Liberalidad?<br><span style="opacity:.6;font-weight:400;font-size:0.58rem">sin AFP/EsSalud</span></th>
+          <th>Subtotal bruto</th>
+          <th>Total bruto</th>
+          <th>Q</th><th></th>
+        </tr></thead>
+        <tbody id="reg-body"></tbody>
+        <tfoot id="reg-foot"></tfoot>
+      </table>
+    </div>
+    <div class="res-box">
+      <h3>Resumen mensual — HE, feriados, asistencia y bonos</h3>
+      <table class="res-tbl">
+        <thead><tr>
+          <th>Mes</th><th>Sueldo</th>
+          <th>Q1 bruto</th><th>Q2 bruto</th><th>Total bruto</th>
+          <th>AFP s/HE</th><th>Neto Q1</th><th>Neto Q2</th><th>Neto total</th>
+          <th>Regular?</th>
+        </tr></thead>
+        <tbody id="res-body"></tbody>
+        <tfoot id="res-foot"></tfoot>
+      </table>
+    </div>
+    <div class="legal-note">
+      <strong>Marco legal:</strong>
+      D.Leg. 854: H1-H2 +25% (max 2h), H3+ +35%. Horario nocturno 10pm-6am: +35% adicional sobre base, acumulable.
+      &nbsp;·&nbsp; D.Leg. 713 Art.9: feriado sin descanso sustitutorio = +200% (2 dias adicionales al sueldo base).
+      &nbsp;·&nbsp; Ley 31047 + DS 005-2021-TR: Aurora tiene los mismos derechos que cualquier trabajador del regimen privado.
+      &nbsp;·&nbsp; <strong>Regularidad (Ley 27735 / DS 001-97-TR):</strong> HE y adicionales voluntarios computan en grati/CTS solo si se perciben en 3 o mas meses del semestre/periodo. De lo contrario se excluyen de la base computable.
+    </div>
+  </div>
+</div>
+
+<script>
+const { jsPDF } = window.jspdf;
+const INGRESO  = new Date(2026,5,1);
+const MESES_ES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const AFP_PRESETS = {
+  'AFP Profuturo': { aporte:10.00, flujo:1.69, seguro:1.37 },
+  'AFP Prima':     { aporte:10.00, flujo:1.60, seguro:1.37 },
+  'AFP Integra':   { aporte:10.00, flujo:1.55, seguro:1.37 },
+  'AFP Habitat':   { aporte:10.00, flujo:1.47, seguro:1.37 },
+  'ONP':           { aporte:13.00, flujo:0,    seguro:0    },
+};
+
+function fmt(n)  { return Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function r2(n)   { return Math.round(n*100)/100; }
+function p(v)    { return (parseFloat(v)||0)/100; }
+function getMeses(anio) { return anio===2026?[5,6,7,8,9,10,11]:[0,1,2,3,4,5,6,7,8,9,10,11]; }
+
+// ── Historial de sueldos ──────────────────────────────────────────────────────
+let SH = [{id:1, desde:'2026-06-01', monto:1400, afpNombre:'AFP Profuturo', aporte:10.00, flujo:1.69, seguro:1.37, essalud:9.00}];
+let SHid = 2;
+
+function getSHparaMes(anio,mes) {
+  const dt=new Date(anio,mes,1);
+  const v=[...SH].filter(s=>new Date(s.desde)<=dt).sort((a,b)=>new Date(b.desde)-new Date(a.desde));
+  return v.length?v[0]:SH[0];
+}
+function getSHactual() {
+  return [...SH].sort((a,b)=>new Date(b.desde)-new Date(a.desde))[0]||SH[0];
+}
+function addSH() {
+  const last=getSHactual();
+  SH.push({id:SHid++,desde:'2027-01-01',monto:last.monto,afpNombre:last.afpNombre,aporte:last.aporte,flujo:last.flujo,seguro:last.seguro,essalud:last.essalud});
+  renderSH(); recalcular();
+}
+function delSH(id) { if(SH.length<=1){alert('Debe haber al menos un tramo.');return;} SH=SH.filter(s=>s.id!==id); renderSH(); recalcular(); }
+function updSH(id,campo,valor) {
+  const s=SH.find(s=>s.id===id); if(!s) return;
+  if(campo==='afpNombre') {
+    s.afpNombre=valor;
+    const p=AFP_PRESETS[valor];
+    if(p){s.aporte=p.aporte;s.flujo=p.flujo;s.seguro=p.seguro;}
+  } else if(campo==='desde') s.desde=valor;
+  else s[campo]=parseFloat(valor)||0;
+  renderSH(); recalcular();
+}
+
+function renderSH() {
+  const sorted=[...SH].sort((a,b)=>new Date(a.desde)-new Date(b.desde));
+  const list=document.getElementById('sh-list');
+  list.innerHTML='';
+  sorted.forEach((s,i)=>{
+    const hasta=i<sorted.length-1
+      ? (()=>{const d=new Date(sorted[i+1].desde);d.setDate(d.getDate()-1);return d.toLocaleDateString('es-PE',{day:'2-digit',month:'short',year:'numeric'});})()
+      : 'vigente';
+    const afpOpts=Object.keys(AFP_PRESETS).map(k=>`<option value="${k}" ${s.afpNombre===k?'selected':''}>${k}</option>`).join('');
+    const afpTot=r2(s.aporte+s.flujo+s.seguro);
+    const div=document.createElement('div');
+    div.className='sh-row';
+    div.innerHTML=`
+      <div class="sh-field"><label>Desde</label><input class="wide" type="date" value="${s.desde}" onchange="updSH(${s.id},'desde',this.value)"></div>
+      <div class="sh-field"><label>Sueldo S/.</label><input type="number" value="${s.monto}" min="1025" step="50" onchange="updSH(${s.id},'monto',this.value)"></div>
+      <div class="sh-divider"></div>
+      <div class="sh-field"><label>AFP</label><select onchange="updSH(${s.id},'afpNombre',this.value)">${afpOpts}</select></div>
+      <div class="sh-field"><label>Aporte %</label><input type="number" value="${s.aporte}" min="0" max="20" step="0.01" onchange="updSH(${s.id},'aporte',this.value)"></div>
+      <div class="sh-field"><label>Flujo %</label><input type="number" value="${s.flujo}" min="0" max="5" step="0.01" onchange="updSH(${s.id},'flujo',this.value)"></div>
+      <div class="sh-field"><label>Seguro %</label><input type="number" value="${s.seguro}" min="0" max="5" step="0.01" onchange="updSH(${s.id},'seguro',this.value)"></div>
+      <div class="sh-field"><label>EsSalud %</label><input type="number" value="${s.essalud}" min="0" max="20" step="0.1" onchange="updSH(${s.id},'essalud',this.value)"></div>
+      <div class="sh-divider"></div>
+      <span class="sh-range">hasta ${hasta}<br><span style="color:#e63946;font-weight:700">AFP total: ${fmt(afpTot)}%</span></span>
+      ${SH.length>1?`<button class="del-sh-btn" onclick="delSH(${s.id})">✕</button>`:''}
+    `;
+    list.appendChild(div);
+  });
+}
+
+// ── Beneficios ────────────────────────────────────────────────────────────────
+function mesesEnSem(m0,m1,anio){
+  let c=0;
+  for(let m=m0;m<=m1;m++){
+    const d=new Date(anio,m,1);
+    if(INGRESO<=d) c++;
+    else if(INGRESO.getFullYear()===anio&&INGRESO.getMonth()===m&&INGRESO.getDate()===1) c++;
+  }
+  return c;
+}
+
+// Detectar regularidad de conceptos variables (HE, feriados, asistencia, bono no-liberalidad)
+// Ley 27735 Art.3: regularidad = percibido en 3+ meses del semestre.
+// Si es regular, se SUMAN los montos de los 6 meses (los meses sin el concepto cuentan como 0)
+// y se divide entre 6 -> ese promedio se incorpora a la remuneracion computable.
+function analisisRegularidad(registro, anio, m0, m1, salarioFn) {
+  const mesesConMonto=[];
+  let totalRemun=0;
+  const mesesSem=m1-m0+1; // siempre 6
+  for(let m=m0;m<=m1;m++){
+    const key=`${anio}-${m}`;
+    const filas=registro.filter(r=>getMesKeyFromFecha(r.fecha)===key);
+    const sal=salarioFn(anio,m);
+    let mesRemun=0;
+    filas.forEach(r=>{ mesRemun+=calcRowBruto(r,sal).remun; });
+    if(mesRemun>0) mesesConMonto.push(m);
+    totalRemun+=mesRemun;
+  }
+  const esRegular=mesesConMonto.length>=3;
+  // Si es regular: promedio = suma de TODO el semestre (incl. meses en 0) / 6
+  const promedio=esRegular?r2(totalRemun/mesesSem):0;
+  return {esRegular,promedio,mesesConMonto:mesesConMonto.length,totalRemun:r2(totalRemun)};
+}
+
+function calcGrat(anio,mes,salario,essaludPct,remuExtra) {
+  // mes: 6=julio(FP), 11=dic(Nav)
+  const esFP=mes===6;
+  const m0=esFP?0:6, m1=esFP?5:11;
+  const meses=mesesEnSem(m0,m1,anio);
+  if(!meses) return null;
+  const base=r2((salario+remuExtra)*meses/6);
+  const bon=r2(base*essaludPct);
+  return {base,bon,total:r2(base+bon),meses,remuExtra};
+}
+function calcCTS(anio,salario,remuExtra) {
+  const meses=mesesEnSem(4,9,anio);
+  if(!meses) return null;
+  const rc=r2((salario+remuExtra)+( salario+remuExtra)/6);
+  return {remuComp:rc,meses,total:r2(rc/12*meses),remuExtra};
+}
+
+function vhBase(s){return r2(s/30/8);}
+// Calcula el bruto de una fila del registro, separando lo "remunerativo" (afecto AFP/EsSalud)
+// de lo "liberalidad" (excluido de todo).
+// row.tipo: 'HE' | 'FERIADO' | 'ASISTENCIA' | 'BONO'
+// row.liberalidad: true/false (solo aplica a tipo 'BONO')
+function calcRowBruto(row,sal){
+  const vh=vhBase(sal);
+  let remun=0; // monto afecto a AFP/EsSalud y elegible para regularidad
+  let liber=0; // monto excluido de todo (liberalidad)
+
+  if(row.tipo==='HE'){
+    remun=r2(r2(vh*1.25*(row.h25||0))+r2(vh*1.35*(row.h35||0))+r2(vh*1.35*(row.hnoc||0)));
+  } else if(row.tipo==='FERIADO'){
+    remun=r2((sal/30)*2*(row.dias||0));
+  } else if(row.tipo==='ASISTENCIA'){
+    // Bono de asistencia perfecta: siempre remunerativo (afecto AFP/EsSalud)
+    remun=r2(row.monto||0);
+  } else if(row.tipo==='BONO'){
+    // Bono/adicional puntual: depende del toggle liberalidad
+    if(row.liberalidad) liber=r2(row.monto||0);
+    else remun=r2(row.monto||0);
+  }
+
+  const total=r2(remun+liber);
+  return {remun,liber,total,sub:remun}; // 'sub' = compat: monto afecto (legal)
+}
+function getQ(f){return !f||parseInt(f.split('-')[2])>15?'Q2':'Q1';}
+function getMesKeyFromFecha(f){if(!f)return null;const p=f.split('-');return`${p[0]}-${parseInt(p[1])-1}`;}
+
+// ── Registro ─────────────────────────────────────────────────────────────────
+let registro=[]; let estadoPagos={}; window._rowData={}; let regId=1;
+
+function switchTab(name,btn){
+  document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+  btn.classList.add('active');
+}
+
+function updateFilter(){
+  const sel=document.getElementById('reg-filter');
+  const prev=sel.value;
+  let opts='<option value="ALL">Todos</option>';
+  [2026,2027,2028].forEach(y=>getMeses(y).forEach(m=>{opts+=`<option value="${y}-${m}">${MESES_ES[m]} ${y}</option>`;}));
+  sel.innerHTML=opts;
+  const keys=[...new Set(registro.map(r=>getMesKeyFromFecha(r.fecha)).filter(Boolean))].sort();
+  const latest=keys[keys.length-1];
+  sel.value=latest||prev||'2026-5';
+  if(!sel.value) sel.value='ALL';
+}
+
+function addReg(tipo){
+  const sel=document.getElementById('reg-filter');
+  let df='2026-06-01';
+  if(sel.value&&sel.value!=='ALL'){const p=sel.value.split('-');df=`${p[0]}-${String(parseInt(p[1])+1).padStart(2,'0')}-01`;}
+  registro.push({
+    id:regId++,tipo,fecha:df,
+    h25:tipo==='HE'?1:0,h35:0,hnoc:0,
+    dias:tipo==='FERIADO'?1:0,
+    monto:(tipo==='ASISTENCIA'||tipo==='BONO')?100:0,
+    liberalidad:tipo==='BONO'?true:false
+  });
+  updateFilter();
+  const nk=getMesKeyFromFecha(df);
+  if(nk) document.getElementById('reg-filter').value=nk;
+  renderRegistro(); recalcular();
+}
+function delReg(id){registro=registro.filter(r=>r.id!==id);updateFilter();renderRegistro();recalcular();}
+function updReg(id,campo,valor){
+  const r=registro.find(r=>r.id===id);if(!r)return;
+  if(campo==='fecha') r.fecha=valor;
+  else if(campo==='liberalidad') r.liberalidad=!!valor;
+  else{let v=parseFloat(valor)||0;if(campo==='h25')v=Math.min(v,2);r[campo]=v;}
+  renderRegistro();recalcular();
+}
+
+function renderRegistro(){
+  const fv=document.getElementById('reg-filter').value;
+  const tbody=document.getElementById('reg-body');
+  tbody.innerHTML='';
+  const filas=fv==='ALL'?registro:registro.filter(r=>getMesKeyFromFecha(r.fecha)===fv);
+  if(!filas.length){
+    tbody.innerHTML=`<tr><td colspan="11" class="empty-reg">Sin registros. Usa los botones de arriba.</td></tr>`;
+    document.getElementById('reg-foot').innerHTML='';return;
+  }
+  let tot=0;
+  filas.forEach(r=>{
+    const sal=getSHparaMes(parseInt(r.fecha.split('-')[0]),parseInt(r.fecha.split('-')[1])-1).monto;
+    const{remun,liber,total}=calcRowBruto(r,sal);
+    tot=r2(tot+total);
+    const q=getQ(r.fecha);
+    const isHE=r.tipo==='HE', isFer=r.tipo==='FERIADO', isAsis=r.tipo==='ASISTENCIA', isBono=r.tipo==='BONO';
+    let tipoLabel='';
+    if(isHE) tipoLabel='<span class="t-he">H.Extra</span>';
+    else if(isFer) tipoLabel='<span class="t-fer">Feriado</span>';
+    else if(isAsis) tipoLabel='<span class="t-asis">Asist. perfecta</span>';
+    else if(isBono) tipoLabel='<span class="t-bono">Bono puntual</span>';
+
+    const dis='disabled style="background:#f5f5f5;color:#ccc"';
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td class="left"><input class="ri dt" type="date" value="${r.fecha}" onchange="updReg(${r.id},'fecha',this.value)"></td>
+      <td class="left">${tipoLabel}</td>
+      <td><input class="ri hrs" type="number" min="0" max="${isHE?2:0}" step="0.5" value="${r.h25||0}" ${!isHE?dis:''} onchange="updReg(${r.id},'h25',this.value)"></td>
+      <td><input class="ri hrs" type="number" min="0" step="0.5" value="${r.h35||0}" ${!isHE?dis:''} onchange="updReg(${r.id},'h35',this.value)"></td>
+      <td><input class="ri hrs" type="number" min="0" step="0.5" value="${r.hnoc||0}" ${!isHE?dis:''} onchange="updReg(${r.id},'hnoc',this.value)"></td>
+      <td><input class="ri hrs" type="number" min="0" step="1" value="${r.dias||0}" ${!isFer?dis:''} onchange="updReg(${r.id},'dias',this.value)"></td>
+      <td><input class="ri add" type="number" min="0" step="1" value="${r.monto||0}" ${(!isAsis&&!isBono)?dis:''} onchange="updReg(${r.id},'monto',this.value)"></td>
+      <td>${isBono?`<input type="checkbox" class="lib-toggle" ${r.liberalidad?'checked':''} onchange="updReg(${r.id},'liberalidad',this.checked)" title="Si esta marcado: NO AFP, NO EsSalud, NO computa grati/CTS">`:'<span style="color:#ddd">—</span>'}</td>
+      <td style="font-weight:700">S/ ${fmt(remun)}</td>
+      <td style="font-weight:800;color:#1a1a2e">S/ ${fmt(total)}${liber>0?` <span style="font-size:0.6rem;color:#aaa">(${fmt(liber)} liber.)</span>`:''}</td>
+      <td><span class="qb ${q.toLowerCase()}">${q}</span></td>
+      <td><button class="del-btn" onclick="delReg(${r.id})">✕</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  document.getElementById('reg-foot').innerHTML=`<tr><td class="left" colspan="8">Total</td><td colspan="2">S/ ${fmt(tot)}</td><td colspan="2"></td></tr>`;
+}
+
+function getHEporMes(anio){
+  const map={};
+  getMeses(anio).forEach(m=>{map[`${anio}-${m}`]={q1:0,q2:0,q1leg:0,q2leg:0,q1adic:0,q2adic:0};});
+  registro.forEach(r=>{
+    const key=getMesKeyFromFecha(r.fecha);if(!key||!map[key])return;
+    const sal=getSHparaMes(parseInt(r.fecha.split('-')[0]),parseInt(r.fecha.split('-')[1])-1).monto;
+    const{remun,liber,total}=calcRowBruto(r,sal);
+    const q=getQ(r.fecha);
+    // q1/q2 = total (afecta neto a pagar). q1leg/q2leg = remun (afecta AFP/EsSalud).
+    // q1adic/q2adic = liber (liberalidad, no afecta AFP/EsSalud, se paga aparte conceptualmente pero suma al neto).
+    if(q==='Q1'){ map[key].q1=r2(map[key].q1+total); map[key].q1leg=r2(map[key].q1leg+remun); map[key].q1adic=r2(map[key].q1adic+liber); }
+    else        { map[key].q2=r2(map[key].q2+total); map[key].q2leg=r2(map[key].q2leg+remun); map[key].q2adic=r2(map[key].q2adic+liber); }
+  });
+  return map;
+}
+
+function renderHERates(sal){
+  const vh=vhBase(sal);
+  document.getElementById('he-sal-lbl').textContent=`S/ ${fmt(sal)}`;
+  document.getElementById('he-rates').innerHTML=[
+    ['Valor hora base',fmt(vh),`${fmt(sal)}/30/8`],
+    ['H1-H2 (+25%)',fmt(r2(vh*1.25)),'max 2 horas'],
+    ['H3+ (+35%)',fmt(r2(vh*1.35)),'desde la 3ra'],
+    ['Nocturna (+35%)',fmt(r2(vh*1.35)),'10pm-6am, acum.'],
+    ['Feriado (+200%)',fmt(r2(sal/30*2)),'2 dias adicionales'],
+  ].map(([l,v,s])=>`<div class="he-rate-pill"><div class="lbl">${l}</div><div class="val">S/ ${v}</div><div class="sub">${s}</div></div>`).join('');
+}
+
+function renderResumenHE(anio,heMap){
+  const meses=getMeses(anio);
+  const tbody=document.getElementById('res-body');
+  tbody.innerHTML='';
+  let tQ1=0,tQ2=0,tB=0,tA=0,tN1=0,tN2=0,tN=0;
+  meses.forEach(m=>{
+    const key=`${anio}-${m}`;
+    const sh=getSHparaMes(anio,m);
+    const afpT=p(sh.aporte)+p(sh.flujo)+p(sh.seguro);
+    const d=heMap[key]||{q1:0,q2:0};
+    const bruto=r2(d.q1+d.q2);
+    const reg=analisisRegularidad(registro,anio,m0forSem(m),m1forSem(m),(y,mm)=>getSHparaMes(y,mm).monto);
+    const tr=document.createElement('tr');
+    if(!bruto){
+      tr.innerHTML=`<td>${MESES_ES[m]}</td><td style="color:#999">S/ ${fmt(sh.monto)}</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td><td style="color:#ddd">—</td>`;
+    } else {
+      const afpHE=r2(bruto*afpT);
+      const nq1=r2(d.q1-r2(d.q1*afpT)),nq2=r2(d.q2-r2(d.q2*afpT)),neto=r2(nq1+nq2);
+      tQ1+=d.q1;tQ2+=d.q2;tB+=bruto;tA+=afpHE;tN1+=nq1;tN2+=nq2;tN+=neto;
+      const regLabel=reg.esRegular?'<span style="color:#1a6b3a;font-weight:700">Si (computa)</span>':'<span style="color:#888">No</span>';
+      tr.innerHTML=`<td>${MESES_ES[m]}</td><td>S/ ${fmt(sh.monto)}</td><td>S/ ${fmt(d.q1)}</td><td>S/ ${fmt(d.q2)}</td><td style="font-weight:700">S/ ${fmt(bruto)}</td><td style="color:#c0392b">S/ ${fmt(afpHE)}</td><td style="color:#1a6b3a">S/ ${fmt(nq1)}</td><td style="color:#1a6b3a">S/ ${fmt(nq2)}</td><td style="font-weight:800;color:#1a1a2e">S/ ${fmt(neto)}</td><td>${regLabel}</td>`;
+    }
+    tbody.appendChild(tr);
+  });
+  document.getElementById('res-foot').innerHTML=`<tr><td colspan="2">Total ${anio}</td><td>S/${fmt(r2(tQ1))}</td><td>S/${fmt(r2(tQ2))}</td><td>S/${fmt(r2(tB))}</td><td style="color:#c0392b">S/${fmt(r2(tA))}</td><td>S/${fmt(r2(tN1))}</td><td>S/${fmt(r2(tN2))}</td><td style="color:#8b4513">S/${fmt(r2(tN))}</td><td></td></tr>`;
+}
+
+// Semestre al que pertenece un mes (para regularidad)
+function m0forSem(m){return m<=5?0:6;}
+function m1forSem(m){return m<=5?5:11;}
+
+// ── RECALCULAR PRINCIPAL ──────────────────────────────────────────────────────
+function recalcular(){
+  const anio=parseInt(document.getElementById('anio').value);
+  const meses=getMeses(anio);
+  const heMap=getHEporMes(anio);
+  const shAct=getSHactual();
+
+  // Pills con sueldo actual
+  const afpActT=p(shAct.aporte)+p(shAct.flujo)+p(shAct.seguro);
+  const afpAct=r2(shAct.monto*afpActT);
+  const essAct=r2(shAct.monto*p(shAct.essalud));
+  const netoAct=r2(shAct.monto-afpAct);
+  document.getElementById('pills').innerHTML=[
+    {l:'Sueldo bruto actual',v:`S/ ${fmt(shAct.monto)}`,f:null,c:''},
+    {l:'AFP retencion mensual',v:`S/ ${fmt(afpAct)}`,f:`${fmt(r2(shAct.monto*p(shAct.aporte)))} ap. + ${fmt(r2(shAct.monto*p(shAct.flujo)))} flujo + ${fmt(r2(shAct.monto*p(shAct.seguro)))} seg.`,c:''},
+    {l:'Neto Aurora / mes',v:`S/ ${fmt(netoAct)}`,f:`${fmt(shAct.monto)} - ${fmt(afpAct)} AFP`,c:'highlight'},
+    {l:'Cada quincena',v:`S/ ${fmt(r2(netoAct/2))}`,f:`${fmt(r2(shAct.monto/2))} bruto - ${fmt(r2(afpAct/2))} AFP`,c:'accent'},
+    {l:'EsSalud mensual (tuyo)',v:`S/ ${fmt(essAct)}`,f:`${fmt(shAct.monto)} x ${shAct.essalud}%`,c:''},
+  ].map(p=>`<div class="pill ${p.c}"><div class="pill-label">${p.l}</div><div class="pill-value">${p.v}</div>${p.f?`<div class="pill-formula">${p.f}</div>`:''}</div>`).join('');
+
+  document.getElementById('tabla-titulo').textContent=`— Pagos ${anio}`;
+
+  const tbody=document.getElementById('tabla-body');
+  tbody.innerHTML='';
+  window._rowData={};
+  let totAfp=0,totEss=0,totSub=0,totDes=0;
+
+  // Pre-calcular regularidad de HE por semestre del año
+  const regFP  = analisisRegularidad(registro,anio,0,5,(y,m)=>getSHparaMes(y,m).monto);
+  const regNav = analisisRegularidad(registro,anio,6,11,(y,m)=>getSHparaMes(y,m).monto);
+  const regCTS = analisisRegularidad(registro,anio,4,9,(y,m)=>getSHparaMes(y,m).monto);
+
+  meses.forEach(m=>{
+    const mesKey=`${anio}-${m}`;
+    const id1=mesKey+'-1q',id2=mesKey+'-2q';
+    const ult=new Date(anio,m+1,0).getDate();
+    const mm=String(m+1).padStart(2,'0');
+    const sh=getSHparaMes(anio,m);
+    const afpT=p(sh.aporte)+p(sh.flujo)+p(sh.seguro);
+    const afpM=r2(sh.monto*afpT);
+    const netoM=r2(sh.monto-afpM);
+    const n15=r2(netoM/2);
+
+    // Remuneracion extra regular que computa en grati/CTS
+    const remuExtraFP  = m===6  ? regFP.promedio  : 0;
+    const remuExtraNav = m===11 ? regNav.promedio : 0;
+    const remuExtraCTS = m===10 ? regCTS.promedio : 0;
+
+    const gFP  = m===6  ? calcGrat(anio,6, sh.monto,p(sh.essalud),remuExtraFP)  : null;
+    const gNav = m===11 ? calcGrat(anio,11,sh.monto,p(sh.essalud),remuExtraNav) : null;
+    const ctsV = m===10 ? calcCTS(anio,sh.monto,remuExtraCTS) : null;
+
+    const heQ1=heMap[mesKey]?heMap[mesKey].q1:0;
+    const heQ2=heMap[mesKey]?heMap[mesKey].q2:0;
+    const heBruto=r2(heQ1+heQ2);
+    const heQ1leg=heMap[mesKey]?heMap[mesKey].q1leg:0;
+    const heQ2leg=heMap[mesKey]?heMap[mesKey].q2leg:0;
+    const heLegTotal=r2(heQ1leg+heQ2leg);
+    // EsSalud 9% sobre sueldo + conceptos remunerativos del mes (HE/feriados/asistencia/bono no-liberalidad)
+    // NO incluye liberalidad
+    const essM=r2((sh.monto+heLegTotal)*p(sh.essalud));
+    // AFP sobre HE/feriados/asistencia/bono-no-liberalidad solamente (heLeg), no sobre liberalidad
+    const hN1=r2(heQ1-r2(heQ1leg*afpT));
+    const hN2=r2(heQ2-r2(heQ2leg*afpT));
+
+    let neto1=r2(n15+hN1), neto2=r2(n15+hN2);
+    let tags1='',tags2='';
+    if(gFP&&gFP.total>0)  {neto1=r2(neto1+gFP.total); tags1+=`<span class="amount-tag"><span class="tag tag-grat">+Grat.FP</span></span>`;}
+    if(gNav&&gNav.total>0){neto1=r2(neto1+gNav.total);tags1+=`<span class="amount-tag"><span class="tag tag-nav">+Grat.Nav.</span></span>`;}
+    if(ctsV)               {tags1+=`<span class="amount-tag"><span class="tag tag-cts">+CTS</span></span>`;}
+    if(heQ1>0) tags1+=`<span class="amount-tag"><span class="tag tag-he">+HE/Fer.</span></span>`;
+    if(heQ2>0) tags2+=`<span class="amount-tag"><span class="tag tag-he">+HE/Fer.</span></span>`;
+
+    const afpMes=r2(afpM+r2(heLegTotal*afpT));
+    const ctsNum=ctsV?ctsV.total:0;
+    const subtotal=r2(neto1+neto2+ctsNum);
+    const desembolso=r2(sh.monto+heBruto+(gFP?gFP.total:0)+(gNav?gNav.total:0)+ctsNum+essM);
+
+    totAfp+=afpMes;totEss+=essM;totSub+=subtotal;totDes+=desembolso;
+
+    window._rowData[mesKey]={
+      mesLabel:`${MESES_ES[m]} ${anio}`,desde:`01/${mm}/${anio}`,hasta:`${ult}/${mm}/${anio}`,
+      sh,afpT,afpMensual:afpMes,essaludMensual:essM,
+      neto1,neto2,heBruto,heQ1,heQ2,
+      heQ1leg:(heMap[mesKey]?heMap[mesKey].q1leg:0), heQ2leg:(heMap[mesKey]?heMap[mesKey].q2leg:0),
+      heQ1adic:(heMap[mesKey]?heMap[mesKey].q1adic:0), heQ2adic:(heMap[mesKey]?heMap[mesKey].q2adic:0),
+      gratFP:gFP,gratNav:gNav,cts:ctsV,
+      subtotal,desembolso
+    };
+
+    const badge=sh.monto!==shAct.monto?`<div class="salary-badge">S/ ${fmt(sh.monto)} · ${sh.afpNombre}</div>`:'';
+    const p1=!!estadoPagos[id1],p2=!!estadoPagos[id2];
+    const tr=document.createElement('tr');
+    tr.innerHTML=`
+      <td><div class="month-label">${MESES_ES[m]} ${anio}</div>${badge}</td>
+      <td class="num"><span class="amount-main">S/ ${fmt(neto1)}</span>${tags1}</td>
+      <td class="num"><span class="amount-main">S/ ${fmt(neto2)}</span>${tags2}</td>
+      <td class="num"><span class="neutral">S/ ${fmt(afpMes)}</span></td>
+      <td class="sc">S/ ${fmt(subtotal)}</td>
+      <td class="num"><span class="neutral">S/ ${fmt(essM)}</span></td>
+      <td class="tc">S/ ${fmt(desembolso)}</td>
+      <td class="center">
+        <div class="status-cell">
+          <div class="checks-row">
+            <div class="check-group"><div class="check-lbl">Q1</div>
+              <button class="check-btn ${p1?'checked':''}" onclick="togglePago('${id1}',this)">
+                <svg width="10" height="10" viewBox="0 0 13 13" fill="none"><path d="M2 6.5L5.5 10L11 3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button></div>
+            <div class="check-group"><div class="check-lbl">Q2</div>
+              <button class="check-btn ${p2?'checked':''}" onclick="togglePago('${id2}',this)">
+                <svg width="10" height="10" viewBox="0 0 13 13" fill="none"><path d="M2 6.5L5.5 10L11 3" stroke="white" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              </button></div>
+          </div>
+          <button class="pdf-btn" onclick="generarBoleta('${mesKey}')">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14,2 14,8 20,8"/></svg>
+            Boleta PDF
+          </button>
+        </div>
+      </td>`;
+    tbody.appendChild(tr);
+  });
+
+  document.getElementById('tabla-foot').innerHTML=`<tr>
+    <td>Total ${anio}</td><td colspan="2"></td>
+    <td>S/ ${fmt(r2(totAfp))}</td>
+    <td class="sc">S/ ${fmt(r2(totSub))}</td>
+    <td>S/ ${fmt(r2(totEss))}</td>
+    <td class="tc" style="color:#ffd0d0">S/ ${fmt(r2(totDes))}</td>
+    <td></td>
+  </tr>`;
+
+  // ── Caja de referencias con calculos reales del año ──────────────────────
+  // Sueldo promedio del año para referencias generales
+  const salRef=shAct.monto;
+  const essRef=p(shAct.essalud);
+  const vhRef=vhBase(salRef);
+
+  // Grati FP real del año
+  const gFPreal=calcGrat(anio,6,getSHparaMes(anio,6).monto,p(getSHparaMes(anio,6).essalud),regFP.promedio);
+  const gNavReal=calcGrat(anio,11,getSHparaMes(anio,11).monto,p(getSHparaMes(anio,11).essalud),regNav.promedio);
+  const ctsReal=calcCTS(anio,getSHparaMes(anio,10).monto,regCTS.promedio);
+
+  let rHTML=`<h3>Detalle de calculos — ${anio} (segun normas vigentes)</h3>`;
+
+  // Grati FP
+  if(gFPreal){
+    const sh6=getSHparaMes(anio,6);
+    rHTML+=`<div class="ref-item"><strong>Gratificacion Fiestas Patrias — Q1 julio, hasta 15/07 (Ley 27735)</strong><br>
+      <span class="f">Sueldo vigente julio = S/${fmt(sh6.monto)}</span><br>
+      ${gFPreal.remuExtra>0?`<span class="f">+ Promedio semestral de conceptos variables regulares (HE/feriados/asistencia/bonos) = S/${fmt(gFPreal.remuExtra)}</span><br>`:''}
+      <span class="f">Base = S/${fmt(r2(sh6.monto+(gFPreal.remuExtra||0)))} x ${gFPreal.meses}/6 meses trabajados = S/${fmt(gFPreal.base)}</span><br>
+      <span class="f">Bon. ext. EsSalud = S/${fmt(gFPreal.base)} x ${(p(sh6.essalud)*100).toFixed(1)}% = S/${fmt(gFPreal.bon)}</span><br>
+      <span class="f">Total grat. = S/${fmt(gFPreal.base)} + S/${fmt(gFPreal.bon)} = <strong>S/${fmt(gFPreal.total)}</strong></span><br>
+      ${regFP.esRegular?`<div class="ref-computable"><strong>Regularidad cumplida (Ley 27735 Art.3):</strong> conceptos variables remunerativos (HE/feriados/asistencia/bonos no-liberalidad) percibidos en <strong>${regFP.mesesConMonto} de 6 meses</strong> del semestre ene-jun (suficiente con 3+). Se suman los montos de TODO el semestre (incl. meses en S/0) = S/${fmt(regFP.totalRemun)}, y se dividen entre 6 → promedio S/${fmt(regFP.promedio)}/mes, incorporado a la base.</div>`
+      :`<div class="ref-computable">Conceptos variables remunerativos presentes en <strong>${regFP.mesesConMonto} de 6 meses</strong> del semestre ene-jun (se requieren 3+) — <strong>NO computan</strong> en la base de gratificacion. Ley 27735 Art.3.</div>`}
+      <span class="nota-ley">No sujeta a AFP ni EsSalud. La bon. ext. reemplaza el aporte EsSalud del empleador ese mes.</span></div>`;
+  }
+
+  if(ctsReal){
+    const sh10=getSHparaMes(anio,10);
+    rHTML+=`<div class="ref-item"><strong>CTS periodo mayo-octubre — deposito hasta 15/11 en cuenta CTS (DS 001-97-TR)</strong><br>
+      <span class="f">Sueldo vigente oct = S/${fmt(sh10.monto)}</span><br>
+      ${ctsReal.remuExtra>0?`<span class="f">+ Promedio del periodo de conceptos variables regulares (HE/feriados/asistencia/bonos) = S/${fmt(ctsReal.remuExtra)}</span><br>`:''}
+      <span class="f">Rem. computable = (S/${fmt(sh10.monto+(ctsReal.remuExtra||0))} + 1/6 grat.) = S/${fmt(ctsReal.remuComp)}</span><br>
+      <span class="f">CTS = S/${fmt(ctsReal.remuComp)} / 12 x ${ctsReal.meses} meses trabajados = <strong>S/${fmt(ctsReal.total)}</strong></span><br>
+      ${regCTS.esRegular?`<div class="ref-computable"><strong>Regularidad cumplida:</strong> conceptos variables presentes en <strong>${regCTS.mesesConMonto} de 6 meses</strong> may-oct (suficiente con 3+). Suma del periodo S/${fmt(regCTS.totalRemun)} ÷ 6 → promedio S/${fmt(regCTS.promedio)}/mes incorporado a la base. DS 001-97-TR Art.9.</div>`
+      :`<div class="ref-computable">Conceptos variables presentes en <strong>${regCTS.mesesConMonto} de 6 meses</strong> may-oct (se requieren 3+) — <strong>NO computan</strong> en CTS.</div>`}
+      <span class="nota-ley">Depositar en cuenta CTS de Aurora (no BCP). No sujeta a AFP ni EsSalud.</span></div>`;
+  }
+
+  if(gNavReal){
+    const sh11=getSHparaMes(anio,11);
+    rHTML+=`<div class="ref-item"><strong>Gratificacion Navidad — Q1 diciembre, hasta 15/12 (Ley 27735)</strong><br>
+      <span class="f">Sueldo vigente dic = S/${fmt(sh11.monto)}</span><br>
+      ${gNavReal.remuExtra>0?`<span class="f">+ Promedio semestral de conceptos variables regulares (HE/feriados/asistencia/bonos) = S/${fmt(gNavReal.remuExtra)}</span><br>`:''}
+      <span class="f">Base = S/${fmt(r2(sh11.monto+(gNavReal.remuExtra||0)))} x ${gNavReal.meses}/6 meses trabajados = S/${fmt(gNavReal.base)}</span><br>
+      <span class="f">Bon. ext. EsSalud = S/${fmt(gNavReal.base)} x ${(p(sh11.essalud)*100).toFixed(1)}% = S/${fmt(gNavReal.bon)}</span><br>
+      <span class="f">Total grat. = S/${fmt(gNavReal.base)} + S/${fmt(gNavReal.bon)} = <strong>S/${fmt(gNavReal.total)}</strong></span>
+      ${regNav.esRegular?`<div class="ref-computable"><strong>Regularidad cumplida:</strong> conceptos variables presentes en <strong>${regNav.mesesConMonto} de 6 meses</strong> jul-dic (suficiente con 3+). Suma S/${fmt(regNav.totalRemun)} ÷ 6 → promedio S/${fmt(regNav.promedio)}/mes incorporado a la base.</div>`
+      :`<div class="ref-computable">Conceptos variables presentes en <strong>${regNav.mesesConMonto} de 6 meses</strong> jul-dic (se requieren 3+) — <strong>NO computan</strong> en grati Navidad.</div>`}
+      </div>`;
+  }
+
+  rHTML+=`<div class="ref-item"><strong>Tarifas — Horas extras y feriados (D.Leg. 854 / D.Leg. 713) con sueldo S/ ${fmt(salRef)}</strong><br>
+    <span class="f">Valor hora base = S/${fmt(salRef)} / 30 / 8 = S/${fmt(vhRef)}</span><br>
+    <span class="f">H1-H2 (+25%, max 2h) = S/${fmt(vhRef)} x 1.25 = S/${fmt(r2(vhRef*1.25))} / hora</span><br>
+    <span class="f">H3+ (+35%) = S/${fmt(vhRef)} x 1.35 = S/${fmt(r2(vhRef*1.35))} / hora</span><br>
+    <span class="f">Nocturna 10pm-6am (+35% adicional) = S/${fmt(vhRef)} x 1.35 = S/${fmt(r2(vhRef*1.35))} / hora adicional</span><br>
+    <span class="f">Feriado sin descanso sustitutorio (+200%) = S/${fmt(salRef)} / 30 x 2 = S/${fmt(r2(salRef/30*2))} / dia</span><br>
+    <span class="nota-ley">HE y feriados son remunerativos: sujetos a AFP (${(afpActT*100).toFixed(2)}%) y EsSalud (${shAct.essalud}%). Computan en grati/CTS solo si son regulares (3+ meses del semestre/periodo).</span></div>`;
+
+  rHTML+=`<div class="ref-item"><strong>Bono de asistencia perfecta</strong><br>
+    Siempre remunerativo: sujeto a AFP y EsSalud, sin excepcion.<br>
+    Para grati/CTS: si Aurora lo obtiene en 3+ meses del semestre/periodo (no es necesario que sean consecutivos), el monto total obtenido en el semestre se divide entre 6 (incluyendo los meses en que NO lo obtuvo como S/0) y ese promedio se suma a la base de grati/CTS.<br>
+    <span class="nota-ley">Base legal: Ley 27735 Art.3 (variable/imprecisa, regularidad 3 en 6 meses).</span></div>`;
+
+  rHTML+=`<div class="ref-item"><strong>Bono / adicional puntual</strong><br>
+    <strong>Si se marca "Liberalidad":</strong> queda totalmente excluido — no afecta AFP, no afecta EsSalud, no entra al analisis de regularidad ni a la base de grati/CTS. Recomendado para pagos excepcionales, no repetibles, sin condicion de desempeño.<br>
+    <strong>Si NO se marca (remunerativo):</strong> afecta AFP y EsSalud ese mes igual que un concepto variable. Si este tipo de bono se repite en 3+ meses del semestre/periodo, computa en grati/CTS como promedio (igual logica que HE/asistencia).<br>
+    <span class="nota-ley">Un bono puntual aislado (1 sola vez) nunca llega a 3 meses, por lo que en la practica no afecta grati/CTS aunque se marque como remunerativo — solo afecta AFP/EsSalud del mes en que se paga.</span></div>`;
+
+  document.getElementById('ref-box').innerHTML=rHTML;
+
+  document.getElementById('nota-pie').innerHTML=
+    `<strong>AFP:</strong> ${fmt(r2((p(shAct.aporte)+p(shAct.flujo)+p(shAct.seguro))*100))}% total retenido (aporte ${shAct.aporte}% + flujo ${shAct.flujo}% + seguro ${shAct.seguro}%). Comision sobre saldo (0.68% aprox.) la descuenta AFP del fondo. &nbsp;·&nbsp;
+     <strong>EsSalud:</strong> ${shAct.essalud}% cargo tuyo. &nbsp;·&nbsp;
+     <strong>BCP:</strong> 191-10885849-0-71 (CCI 00219110885849407156). &nbsp;·&nbsp;
+     <strong>Total desembolso</strong> = bruto + HE bruto + beneficios + EsSalud.`;
+
+  updateFilter();
+  renderHERates(shAct.monto);
+  renderRegistro();
+  renderResumenHE(anio,heMap);
+
+  saveData();
+}
+
+function togglePago(id,btn){estadoPagos[id]=!estadoPagos[id];btn.classList.toggle('checked');saveData();}
+
+// ── PDF ───────────────────────────────────────────────────────────────────────
+function generarBoleta(mesKey){
+  const d=window._rowData[mesKey];if(!d)return;
+  const doc=new jsPDF({unit:'mm',format:'a4'});
+  const W=210,M=18,C=W-M*2;let y=0;
+  const fr=(x,yy,w,h,col)=>{doc.setFillColor(col);doc.rect(x,yy,w,h,'F');};
+  const hl=(x1,y1,x2,col)=>{doc.setDrawColor(col||'#cccccc');doc.line(x1,y1,x2,y1);};
+  const t=(txt,x,yy,o={})=>{doc.setFontSize(o.size||9);doc.setFont('helvetica',o.bold?'bold':'normal');doc.setTextColor(o.color||'#1a1a1a');doc.text(String(txt),x,yy,{align:o.align||'left'});};
+  const sec=(tit)=>{fr(M,y,C,5.5,'#f0f0f5');t(tit,M+2,y+4,{bold:true,size:7.5,color:'#555555'});y+=8;};
+  const fN=(n)=>Number(n).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+  const r2f=(n)=>Math.round(n*100)/100;
+  const rowM=(lbl,monto,bold,bg,clr)=>{
+    if(bg)fr(M,y,C,7,bg);
+    t(lbl,M+3,y+4.8,{bold:!!bold,size:8.5,color:clr||(bold?'#1a1a2e':'#333333')});
+    t(`S/ ${fN(monto)}`,W-M-3,y+4.8,{bold:!!bold,size:8.5,color:clr||(bold?'#1a1a2e':'#333333'),align:'right'});
+    hl(M,y+7,W-M);y+=7;
+  };
+  fr(0,0,W,28,'#1a1a2e');
+  t('BOLETA DE PAGO',M,11,{bold:true,size:13,color:'#fff'});
+  t(`Trabajadora del Hogar - Ley N 31047 | ${d.sh.afpNombre}`,M,17,{size:8,color:'#aabbcc'});
+  t(d.mesLabel,W-M,11,{bold:true,size:9,color:'#fff',align:'right'});
+  t(`Del ${d.desde} al ${d.hasta}`,W-M,17,{size:8,color:'#aabbcc',align:'right'});
+  y=36;
+  sec('DATOS DE LA PERSONA EMPLEADORA DEL HOGAR');
+  t('Nombre:',M,y+3,{size:8,color:'#666'});t('Giancarlo Zuniga Saavedra',M+30,y+3,{bold:true,size:8});
+  t('DNI:',W/2,y+3,{size:8,color:'#666'});t('45930052',W/2+12,y+3,{bold:true,size:8});y+=7;
+  t('Domicilio:',M,y+3,{size:8,color:'#666'});t('Calle Piura 454, Miraflores, Lima',M+30,y+3,{bold:true,size:8});y+=9;
+  sec('DATOS DE LA PERSONA TRABAJADORA DEL HOGAR');
+  t('Nombre:',M,y+3,{size:8,color:'#666'});t('Aurora Milagros Jara Aguirre',M+30,y+3,{bold:true,size:8});
+  t('DNI:',W/2,y+3,{size:8,color:'#666'});t('72094211',W/2+12,y+3,{bold:true,size:8});y+=7;
+  t('Ingreso:',M,y+3,{size:8,color:'#666'});t('01/06/2026',M+30,y+3,{bold:true,size:8});
+  t('Pensiones:',W/2,y+3,{size:8,color:'#666'});t(d.sh.afpNombre,W/2+22,y+3,{bold:true,size:8});y+=9;
+  sec('PERIODO');
+  t('Periodicidad:',M,y+3,{size:8,color:'#666'});t('Quincenal',M+30,y+3,{bold:true,size:8});
+  t('Periodo:',W/2,y+3,{size:8,color:'#666'});t(`${d.desde} al ${d.hasta}`,W/2+18,y+3,{bold:true,size:8});y+=9;
+  sec('DETALLE DE INGRESOS, DEDUCCIONES Y APORTES');
+  t('INGRESOS',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
+  const b15=r2f(d.sh.monto/2);
+  rowM('A. Remuneracion 1a quincena (dias 1-15)',b15);
+  rowM('B. Remuneracion 2a quincena (dias 16-fin)',b15);
+  if(d.heQ1leg>0) rowM('C. Horas extras / feriados Q1 (calculo legal)',d.heQ1leg,false,'#fff8f0','#8b4513');
+  if(d.heQ2leg>0) rowM('C. Horas extras / feriados Q2 (calculo legal)',d.heQ2leg,false,'#fff8f0','#8b4513');
+  if(d.heQ1adic>0) rowM('C2. Bono / adicional voluntario Q1',d.heQ1adic,false,'#f0f4ff','#1a4b8a');
+  if(d.heQ2adic>0) rowM('C2. Bono / adicional voluntario Q2',d.heQ2adic,false,'#f0f4ff','#1a4b8a');
+  if(d.gratFP)  rowM(`D. Grat. FP: S/${fN(d.gratFP.base)}x${d.gratFP.meses}/6 + S/${fN(d.gratFP.bon)} bon.ext.`,d.gratFP.total,false,'#f0fff4','#1a6b3a');
+  if(d.gratNav) rowM(`D. Grat. Nav.: S/${fN(d.gratNav.base)}x${d.gratNav.meses}/6 + S/${fN(d.gratNav.bon)} bon.ext.`,d.gratNav.total,false,'#f0fff4','#1a6b3a');
+  const totalIng=r2f(d.sh.monto+d.heBruto+(d.gratFP?d.gratFP.total:0)+(d.gratNav?d.gratNav.total:0));
+  rowM('TOTAL INGRESOS',totalIng,true,'#f8f8fb');y+=3;
+  t('DEDUCCIONES (descuentos a la trabajadora)',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
+  rowM(`Aporte AFP (${d.sh.aporte}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.aporte)));
+  rowM(`Comision flujo AFP (${d.sh.flujo}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.flujo)));
+  rowM(`Prima seguro AFP (${d.sh.seguro}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.seguro)));
+  rowM('TOTAL DEDUCCIONES',d.afpMensual,true,'#fff3f3');y+=3;
+  t('APORTES DEL EMPLEADOR',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
+  rowM(`EsSalud (${d.sh.essalud}%)`,d.essaludMensual);y+=3;
+  if(d.cts){
+    fr(M,y,C,9,'#e3eeff');
+    t('CTS may-oct - CUENTA CTS (NO BCP)',M+3,y+3,{bold:true,size:8,color:'#1a4b8a'});
+    t(`S/${fN(d.cts.total)}`,W-M-3,y+3,{bold:true,size:9,color:'#1a4b8a',align:'right'});
+    y+=6;t(`(S/${fN(d.cts.remuComp)}/12)x${d.cts.meses}m`,M+3,y+3,{size:7,color:'#888'});y+=9;
+  }
+  fr(M,y,C,10,'#1a1a2e');
+  t('NETO A PAGAR (transferir a Aurora - BCP)',M+5,y+6.5,{bold:true,size:9.5,color:'#fff'});
+  t(`S/ ${fN(r2f(d.neto1+d.neto2))}`,W-M-4,y+6.5,{bold:true,size:12,color:'#fff',align:'right'});
+  y+=13;t(`Q1 dia 15: S/${fN(d.neto1)}     Q2 fin mes: S/${fN(d.neto2)}`,M,y,{size:7.5,color:'#aaa'});y+=14;
+  hl(M,y,M+65,'#555');hl(W-M-65,y,W-M,'#555');y+=4;
+  t('Persona empleadora',M+8,y,{size:7.5,color:'#555'});
+  t('Persona trabajadora del hogar',W-M-62,y,{size:7.5,color:'#555'});y+=5;
+  t('Giancarlo Zuniga Saavedra - DNI 45930052',M,y,{size:7,color:'#888'});
+  t('Aurora M. Jara Aguirre - DNI 72094211',W-M-63,y,{size:7,color:'#888'});y+=10;
+  t('Fecha de pago: _____ / _____ / _________',M,y,{size:8});
+  fr(0,283,W,14,'#f0f0f5');
+  t('Formato Referencial MTPE - Ley N 31047 - Ley de las trabajadoras y trabajadores del hogar',W/2,290,{size:6.5,color:'#aaa',align:'center'});
+
+  doc.save(`boleta_aurora_${mesKey}.pdf`);
+}
+
+// ── Persistencia (Google Apps Script + Sheets) ─────────────────────────────────
+const API_URL = 'https://script.google.com/macros/s/AKfycbxf-v0HLan8R4oPeEMzmVeZXyGk8sW8NCU3b7HqOjrpg6IghP_WpkxA-UGKXigwLGbKQg/exec';
+
+let saveTimeout=null;
+function saveData(){
+  // Debounce: agrupa cambios rapidos en un solo guardado tras 700ms de inactividad
+  clearTimeout(saveTimeout);
+  const ind=document.getElementById('save-indicator');
+  if(ind) ind.textContent='Guardando...';
+  saveTimeout=setTimeout(()=>{
+    try{
+      const payload = JSON.stringify({ SH, SHid, registro, regId, estadoPagos });
+      const url = API_URL + '?action=save&data=' + encodeURIComponent(payload) + '&_=' + Date.now();
+      // Usamos un <script> tag (igual que JSONP) para evitar fetch/CORS por completo
+      const s=document.createElement('script');
+      s.src=url;
+      s.onload=()=>{ s.remove(); if(ind){ind.textContent='Guardado ✓'; setTimeout(()=>{if(ind.textContent==='Guardado ✓')ind.textContent='';},1500);} };
+      s.onerror=()=>{ s.remove(); if(ind) ind.textContent='Error al guardar (revisa conexion)'; };
+      document.head.appendChild(s);
+    }catch(e){
+      console.error('Error guardando datos:', e);
+      if(ind) ind.textContent='Error al guardar (revisa conexion)';
+    }
+  },700);
+}
+
+async function loadData(){
+  const ind=document.getElementById('save-indicator');
+  if(ind) ind.textContent='Cargando datos...';
+  try{
+    const data = await loadViaJSONP();
+    if(data.SH && data.SH.length) SH = data.SH;
+    if(data.SHid) SHid = data.SHid;
+    if(data.registro) registro = data.registro;
+    if(data.regId) regId = data.regId;
+    if(data.estadoPagos) estadoPagos = data.estadoPagos;
+    if(ind){ ind.textContent='Datos cargados ✓'; setTimeout(()=>{if(ind.textContent==='Datos cargados ✓')ind.textContent='';},1500); }
+  }catch(e){
+    console.error('Error de carga:', e);
+    if(ind){
+      ind.innerHTML='Sin conexion remota: '+(e&&e.message?e.message:'error desconocido')+
+        ' <button onclick="loadData()" style="font-size:0.65rem;padding:1px 6px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;">Reintentar</button>';
+    }
+  }
+}
+
+// JSONP: evita CORS por completo cargando un <script> con la respuesta envuelta en una funcion callback
+function loadViaJSONP(){
+  return new Promise((resolve,reject)=>{
+    const cbName='__planillaCb_'+Date.now();
+    const script=document.createElement('script');
+    const timeout=setTimeout(()=>{cleanup();reject(new Error('Timeout - revisa tu conexion a internet'));},8000);
+    function cleanup(){
+      clearTimeout(timeout);
+      delete window[cbName];
+      script.remove();
+    }
+    window[cbName]=function(data){
+      cleanup();
+      resolve(data);
+    };
+    script.onerror=(ev)=>{cleanup();reject(new Error('No se pudo cargar el script (revisa que el archivo se abra con http:// o https://, no file://)'));};
+    script.src=API_URL+'?callback='+cbName;
+    document.head.appendChild(script);
+  });
+}
+
+async function init(){
+  await loadData();
+  renderSH();
+  recalcular();
+}
+
+init();
+</script>
+</body>
+</html>
