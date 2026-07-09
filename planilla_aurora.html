@@ -893,9 +893,11 @@ function generarBoleta(mesKey){
   const totalIng=r2f(d.sh.monto+d.heBruto+(d.gratFP?d.gratFP.total:0)+(d.gratNav?d.gratNav.total:0));
   rowM('TOTAL INGRESOS',totalIng,true,'#f8f8fb');y+=3;
   t('DEDUCCIONES (descuentos a la trabajadora)',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
-  rowM(`Aporte AFP (${d.sh.aporte}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.aporte)));
-  rowM(`Comision flujo AFP (${d.sh.flujo}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.flujo)));
-  rowM(`Prima seguro AFP (${d.sh.seguro}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.seguro)));
+  // Base AFP = sueldo + HE/feriados/asistencia/bonos remunerativos (leg) SOLAMENTE, nunca sobre liberalidad
+  const baseAfpPdf=r2f(d.sh.monto+(d.heQ1leg||0)+(d.heQ2leg||0));
+  rowM(`Aporte AFP (${d.sh.aporte}%)`,r2f(baseAfpPdf*p(d.sh.aporte)));
+  rowM(`Comision flujo AFP (${d.sh.flujo}%)`,r2f(baseAfpPdf*p(d.sh.flujo)));
+  rowM(`Prima seguro AFP (${d.sh.seguro}%)`,r2f(baseAfpPdf*p(d.sh.seguro)));
   rowM('TOTAL DEDUCCIONES',d.afpMensual,true,'#fff3f3');y+=3;
   t('APORTES DEL EMPLEADOR',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
   rowM(`EsSalud (${d.sh.essalud}%)`,d.essaludMensual);y+=3;
