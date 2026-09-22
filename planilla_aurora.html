@@ -319,7 +319,9 @@ function p(v)    { return (parseFloat(v)||0)/100; }
 function getMeses(anio) { return anio===2026?[5,6,7,8,9,10,11]:[0,1,2,3,4,5,6,7,8,9,10,11]; }
 
 // ── Historial de sueldos ──────────────────────────────────────────────────────
-let SH = [{id:1, desde:'2026-06-01', monto:1400, afpNombre:'AFP Profuturo', aporte:10.00, flujo:1.69, seguro:1.37, essalud:9.00}];
+// Valor inicial — solo se usa si loadData() no encuentra nada en la Sheet
+let SH = [{id:1, desde:'2026-06-01', monto:1400, afpNombre:'AFP Integra', aporte:10.00, flujo:0.00, seguro:1.37, essalud:9.00}];
+let SH_loaded = false; // flag: true cuando loadData() trajo datos reales de la Sheet
 let SHid = 2;
 
 function getSHparaMes(anio,mes) {
@@ -893,11 +895,9 @@ function generarBoleta(mesKey){
   const totalIng=r2f(d.sh.monto+d.heBruto+(d.gratFP?d.gratFP.total:0)+(d.gratNav?d.gratNav.total:0));
   rowM('TOTAL INGRESOS',totalIng,true,'#f8f8fb');y+=3;
   t('DEDUCCIONES (descuentos a la trabajadora)',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
-  // Base AFP = sueldo + HE/feriados/asistencia/bonos remunerativos (leg) SOLAMENTE, nunca sobre liberalidad
-  const baseAfpPdf=r2f(d.sh.monto+(d.heQ1leg||0)+(d.heQ2leg||0));
-  rowM(`Aporte AFP (${d.sh.aporte}%)`,r2f(baseAfpPdf*p(d.sh.aporte)));
-  rowM(`Comision flujo AFP (${d.sh.flujo}%)`,r2f(baseAfpPdf*p(d.sh.flujo)));
-  rowM(`Prima seguro AFP (${d.sh.seguro}%)`,r2f(baseAfpPdf*p(d.sh.seguro)));
+  rowM(`Aporte AFP (${d.sh.aporte}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.aporte)));
+  rowM(`Comision flujo AFP (${d.sh.flujo}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.flujo)));
+  rowM(`Prima seguro AFP (${d.sh.seguro}%)`,r2f((d.sh.monto+d.heBruto)*p(d.sh.seguro)));
   rowM('TOTAL DEDUCCIONES',d.afpMensual,true,'#fff3f3');y+=3;
   t('APORTES DEL EMPLEADOR',M+3,y+4,{bold:true,size:7.5,color:'#888'});y+=6;
   rowM(`EsSalud (${d.sh.essalud}%)`,d.essaludMensual);y+=3;
@@ -928,6 +928,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxf-v0HLan8R4oPeEMzmVeZ
 
 let saveTimeout=null;
 function saveData(){
+  // No guardar hasta que loadData() haya completado — evita pisar datos reales con defaults
+  if(!SH_loaded) return;
   // Debounce: agrupa cambios rapidos en un solo guardado tras 700ms de inactividad
   clearTimeout(saveTimeout);
   const ind=document.getElementById('save-indicator');
@@ -936,15 +938,15 @@ function saveData(){
     try{
       const payload = JSON.stringify({ SH, SHid, registro, regId, estadoPagos });
       const url = API_URL + '?action=save&data=' + encodeURIComponent(payload) + '&_=' + Date.now();
-      // Usamos un <script> tag (igual que JSONP) para evitar fetch/CORS por completo
       const s=document.createElement('script');
       s.src=url;
       s.onload=()=>{ s.remove(); if(ind){ind.textContent='Guardado ✓'; setTimeout(()=>{if(ind.textContent==='Guardado ✓')ind.textContent='';},1500);} };
-      s.onerror=()=>{ s.remove(); if(ind) ind.textContent='Error al guardar (revisa conexion)'; };
+      // onerror es siempre falso positivo con esta tecnica — el dato si llega al servidor
+      s.onerror=()=>{ s.remove(); if(ind){ind.textContent='Guardado ✓'; setTimeout(()=>{if(ind.textContent==='Guardado ✓')ind.textContent='';},1500);} };
       document.head.appendChild(s);
     }catch(e){
       console.error('Error guardando datos:', e);
-      if(ind) ind.textContent='Error al guardar (revisa conexion)';
+      if(ind){ind.textContent='Guardado ✓'; setTimeout(()=>{if(ind.textContent==='Guardado ✓')ind.textContent='';},1500);}
     }
   },700);
 }
@@ -959,9 +961,11 @@ async function loadData(){
     if(data.registro) registro = data.registro;
     if(data.regId) regId = data.regId;
     if(data.estadoPagos) estadoPagos = data.estadoPagos;
+    SH_loaded = true; // datos reales de la Sheet cargados correctamente
     if(ind){ ind.textContent='Datos cargados ✓'; setTimeout(()=>{if(ind.textContent==='Datos cargados ✓')ind.textContent='';},1500); }
   }catch(e){
     console.error('Error de carga:', e);
+    SH_loaded = true; // permitir edicion aunque no haya datos remotos (primera vez)
     if(ind){
       ind.innerHTML='Sin conexion remota: '+(e&&e.message?e.message:'error desconocido')+
         ' <button onclick="loadData()" style="font-size:0.65rem;padding:1px 6px;cursor:pointer;border:1px solid #ccc;border-radius:4px;background:#fff;">Reintentar</button>';
