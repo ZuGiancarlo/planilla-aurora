@@ -321,7 +321,8 @@ function getMeses(anio) { return anio===2026?[5,6,7,8,9,10,11]:[0,1,2,3,4,5,6,7,
 // ── Historial de sueldos ──────────────────────────────────────────────────────
 // Valor inicial — solo se usa si loadData() no encuentra nada en la Sheet
 let SH = [{id:1, desde:'2026-06-01', monto:1400, afpNombre:'AFP Integra', aporte:10.00, flujo:0.00, seguro:1.37, essalud:9.00}];
-let SH_loaded = false; // flag: true cuando loadData() trajo datos reales de la Sheet
+let SH_loaded = false;    // true cuando loadData() completó
+let user_acted = false;   // true solo cuando el usuario hizo un cambio manual
 let SHid = 2;
 
 function getSHparaMes(anio,mes) {
@@ -333,12 +334,14 @@ function getSHactual() {
   return [...SH].sort((a,b)=>new Date(b.desde)-new Date(a.desde))[0]||SH[0];
 }
 function addSH() {
+  user_acted = true;
   const last=getSHactual();
   SH.push({id:SHid++,desde:'2027-01-01',monto:last.monto,afpNombre:last.afpNombre,aporte:last.aporte,flujo:last.flujo,seguro:last.seguro,essalud:last.essalud});
   renderSH(); recalcular();
 }
-function delSH(id) { if(SH.length<=1){alert('Debe haber al menos un tramo.');return;} SH=SH.filter(s=>s.id!==id); renderSH(); recalcular(); }
+function delSH(id) { user_acted=true; if(SH.length<=1){alert('Debe haber al menos un tramo.');return;} SH=SH.filter(s=>s.id!==id); renderSH(); recalcular(); }
 function updSH(id,campo,valor) {
+  user_acted=true;
   const s=SH.find(s=>s.id===id); if(!s) return;
   if(campo==='afpNombre') {
     s.afpNombre=valor;
@@ -481,6 +484,7 @@ function updateFilter(){
 }
 
 function addReg(tipo){
+  user_acted=true;
   const sel=document.getElementById('reg-filter');
   let df='2026-06-01';
   if(sel.value&&sel.value!=='ALL'){const p=sel.value.split('-');df=`${p[0]}-${String(parseInt(p[1])+1).padStart(2,'0')}-01`;}
@@ -496,8 +500,9 @@ function addReg(tipo){
   if(nk) document.getElementById('reg-filter').value=nk;
   renderRegistro(); recalcular();
 }
-function delReg(id){registro=registro.filter(r=>r.id!==id);updateFilter();renderRegistro();recalcular();}
+function delReg(id){user_acted=true;registro=registro.filter(r=>r.id!==id);updateFilter();renderRegistro();recalcular();}
 function updReg(id,campo,valor){
+  user_acted=true;
   const r=registro.find(r=>r.id===id);if(!r)return;
   if(campo==='fecha') r.fecha=valor;
   else if(campo==='liberalidad') r.liberalidad=!!valor;
@@ -839,7 +844,7 @@ function recalcular(){
   saveData();
 }
 
-function togglePago(id,btn){estadoPagos[id]=!estadoPagos[id];btn.classList.toggle('checked');saveData();}
+function togglePago(id,btn){user_acted=true;estadoPagos[id]=!estadoPagos[id];btn.classList.toggle('checked');saveData();}
 
 // ── PDF ───────────────────────────────────────────────────────────────────────
 function generarBoleta(mesKey){
@@ -929,8 +934,8 @@ const API_URL = 'https://script.google.com/macros/s/AKfycbxf-v0HLan8R4oPeEMzmVeZ
 
 let saveTimeout=null;
 function saveData(){
-  // No guardar hasta que loadData() haya completado — evita pisar datos reales con defaults
-  if(!SH_loaded) return;
+  // Solo guardar si: (1) loadData completó, (2) el usuario hizo un cambio manual
+  if(!SH_loaded || !user_acted) return;
   // Debounce: agrupa cambios rapidos en un solo guardado tras 700ms de inactividad
   clearTimeout(saveTimeout);
   const ind=document.getElementById('save-indicator');
