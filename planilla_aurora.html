@@ -686,13 +686,14 @@ function recalcular(){
     let tags1='',tags2='';
     if(gFP&&gFP.total>0)  {neto1=r2(neto1+gFP.total); tags1+=`<span class="amount-tag"><span class="tag tag-grat">+Grat.FP</span></span>`;}
     if(gNav&&gNav.total>0){neto1=r2(neto1+gNav.total);tags1+=`<span class="amount-tag"><span class="tag tag-nav">+Grat.Nav.</span></span>`;}
-    if(ctsV)               {tags1+=`<span class="amount-tag"><span class="tag tag-cts">+CTS</span></span>`;}
+    if(ctsV&&ctsV.total>0){neto1=r2(neto1+ctsV.total);tags1+=`<span class="amount-tag"><span class="tag tag-cts">+CTS</span></span>`;}
     if(heQ1>0) tags1+=`<span class="amount-tag"><span class="tag tag-he">+HE/Fer.</span></span>`;
     if(heQ2>0) tags2+=`<span class="amount-tag"><span class="tag tag-he">+HE/Fer.</span></span>`;
 
     const afpMes=r2(afpM+r2(heLegTotal*afpT));
     const ctsNum=ctsV?ctsV.total:0;
-    const subtotal=r2(neto1+neto2+ctsNum);
+    // subtotal = lo que recibe Aurora (ya incluye CTS en neto1)
+    const subtotal=r2(neto1+neto2);
     const desembolso=r2(sh.monto+heBruto+(gFP?gFP.total:0)+(gNav?gNav.total:0)+ctsNum+essM);
 
     totAfp+=afpMes;totEss+=essM;totSub+=subtotal;totDes+=desembolso;
