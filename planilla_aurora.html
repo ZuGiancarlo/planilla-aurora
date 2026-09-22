@@ -433,15 +433,19 @@ function calcCTS(anio,salario,remuExtra) {
   return {remuComp:rc,meses,total:r2(rc/12*meses),remuExtra,periodo:'may-oct'};
 }
 function calcCTSMayo(anio,salario,remuExtra) {
-  // CTS periodo noviembre(anio-1)-abril(anio), deposito hasta 15 may
-  // Periodo: nov del año anterior a abr del año actual
-  const mesesAnterior = mesesEnSem(10,11,anio-1); // nov-dic del año anterior
-  const mesesActual   = mesesEnSem(0,3,anio);      // ene-abr del año actual
-  const meses = mesesAnterior + mesesActual;
+  // CTS periodo nov(anio-1) a abr(anio), deposito hasta 15 may del anio
+  // Cuenta meses completos desde la fecha de ingreso dentro de ese periodo
+  let meses = 0;
+  // Nov y Dic del año anterior
+  [[anio-1,10],[anio-1,11],[anio,0],[anio,1],[anio,2],[anio,3]].forEach(([y,m])=>{
+    const primerDia = new Date(y,m,1);
+    if(INGRESO <= primerDia) meses++;
+    else if(INGRESO.getFullYear()===y && INGRESO.getMonth()===m && INGRESO.getDate()===1) meses++;
+  });
   if(!meses) return null;
   const base = r2(salario+remuExtra);
   const rc   = r2(base + base/6);
-  return {remuComp:rc,meses,total:r2(rc/12*meses),remuExtra,periodo:'nov-abr'};
+  return {remuComp:rc, meses, total:r2(rc/12*meses), remuExtra, periodo:'nov-abr'};
 }
 
 function vhBase(s){return r2(s/30/8);}
@@ -666,7 +670,13 @@ function recalcular(){
   const regNav     = analisisRegularidad(registro,anio,6,11,(y,m)=>getSHparaMes(y,m).monto);
   const regCTS     = analisisRegularidad(registro,anio,4,9,(y,m)=>getSHparaMes(y,m).monto);
   // CTS mayo: regularidad del periodo nov(año ant)-abr(año actual)
-  const regCTSMayo = analisisRegularidad(registro,anio-1,10,11,(y,m)=>getSHparaMes(y,m).monto); // solo approx
+  // Combinamos registros de ambos años para el análisis
+  const registroPeriodoCTSMayo = registro.filter(r => {
+    if(!r.fecha) return false;
+    const p=r.fecha.split('-'); const y=parseInt(p[0]),m=parseInt(p[1])-1;
+    return (y===anio-1 && m>=10) || (y===anio && m<=3);
+  });
+  const regCTSMayo = analisisRegularidad(registroPeriodoCTSMayo, anio, 0, 3, (y,mm)=>getSHparaMes(y,mm).monto);
 
   meses.forEach(m=>{
     const mesKey=`${anio}-${m}`;
